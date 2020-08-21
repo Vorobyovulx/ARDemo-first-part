@@ -13,7 +13,8 @@ class ViewController: UIViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
-    
+        
+       // sceneView.session.delegate = self
         sceneView.delegate = self
         
         let imageTexture = UIImage(named: "mad_texture.png")
@@ -22,8 +23,8 @@ class ViewController: UIViewController {
         // Создаем сцену
         let scene = SCNScene()
         
-        sceneView.debugOptions = [ARSCNDebugOptions.showFeaturePoints]
-        configuration.planeDetection = [.horizontal, .vertical]
+        //sceneView.debugOptions = [ARSCNDebugOptions.showFeaturePoints]
+        //configuration.planeDetection = [.horizontal, .vertical]
         
         addNewCubeModel(
             size: 0.2,
@@ -32,45 +33,45 @@ class ViewController: UIViewController {
             scene: scene
         )
         
-        addNewCubeModel(
-            size: 0.2,
-            position: SCNVector3(0, 0, -1.0),
-            texture: imageTexture,
-            scene: scene
-        )
+//        addNewCubeModel(
+//            size: 0.2,
+//            position: SCNVector3(0, 0, -1.0),
+//            texture: imageTexture,
+//            scene: scene
+//        )
         
-        addNewTextModel(
-            text: "This is Mad Box",
-            scale: SCNVector3(0.005, 0.005, 0.005),
-            position: SCNVector3(-0.2, 0.3, -1.0),
-            depth: 3.0,
-            color: .orange,
-            scene: scene
-        )
-        
-        addNewModel(
-            withPath: "art.scnassets/dance/dance.dae",
-            scale: SCNVector3(0.07, 0.07, 0.07),
-            position: SCNVector3(-0.25, -0.1, -1.0),
-            scene: scene
-        )
-        
-        addNewModel(
-            withPath: "art.scnassets/dance/dance.dae",
-            scale: SCNVector3(0.07, 0.07, 0.07),
-            position: SCNVector3(0.25, -0.1, -1.0),
-            scene: scene
-        )
-        
-        addNewModel(
-            withPath: "art.scnassets/dance/dance.dae",
-            scale: SCNVector3(0.07, 0.07, 0.07),
-            position: SCNVector3(0, -0.1, -1.5),
-            scene: scene
-        )
+//        addNewTextModel(
+//            text: "Mad Box",
+//            scale: SCNVector3(0.005, 0.005, 0.005),
+//            position: SCNVector3(-0.2, 0.3, -1.0),
+//            depth: 3.0,
+//            color: .orange,
+//            scene: scene
+//        )
+//
+//        addNewModel(
+//            withPath: "art.scnassets/dance/dance.dae",
+//            scale: SCNVector3(0.07, 0.07, 0.07),
+//            position: SCNVector3(-0.25, -0.1, -1.0),
+//            scene: scene
+//        )
+//
+//        addNewModel(
+//            withPath: "art.scnassets/dance/dance.dae",
+//            scale: SCNVector3(0.07, 0.07, 0.07),
+//            position: SCNVector3(0.25, -0.1, -1.0),
+//            scene: scene
+//        )
+//
+//        addNewModel(
+//            withPath: "art.scnassets/dance/dance.dae",
+//            scale: SCNVector3(0.07, 0.07, 0.07),
+//            position: SCNVector3(0, -0.1, -1.5),
+//            scene: scene
+//        )
         
         //addFloor(to: scene)
-        
+        //configureTapGesture()
         sceneView.scene = scene
     }
     
@@ -86,7 +87,7 @@ class ViewController: UIViewController {
         sceneView.session.pause()
     }
     
-    private func addNewCubeModel(size: CGFloat, position: SCNVector3, texture: Any?, scene: SCNScene) {
+    private func getCubeNode(size: CGFloat, position: SCNVector3, texture: Any?) -> SCNNode {
         // Создаем геометрию - каркас
         let boxGeometry = SCNBox(
             width: size,
@@ -104,7 +105,12 @@ class ViewController: UIViewController {
         boxNode.geometry?.materials = [material]
         boxNode.position = position
         
-        scene.rootNode.addChildNode(boxNode)
+        return boxNode
+    }
+    
+    private func addNewCubeModel(size: CGFloat, position: SCNVector3, texture: Any?, scene: SCNScene) {
+        let node = getCubeNode(size: size, position: position, texture: texture)
+        scene.rootNode.addChildNode(node)
     }
     
     private func addNewTextModel(text: String, scale: SCNVector3, position: SCNVector3, depth: CGFloat, color: UIColor, scene: SCNScene) {
@@ -157,6 +163,47 @@ class ViewController: UIViewController {
         scene.rootNode.addChildNode(floorNode)
     }
     
+    // Располагаем объекты на поверхностях
+    func configureTapGesture() {
+        let tapGestureRecognizer = UITapGestureRecognizer(
+            target: self,
+            action: #selector(setBoxByTap)
+        )
+        
+        sceneView.addGestureRecognizer(tapGestureRecognizer)
+    }
+    
+    @objc func setBoxByTap(tapGesture: UITapGestureRecognizer) {
+        guard let sceneView = tapGesture.view as? ARSCNView else {
+            return
+        }
+        
+        let tapLocation = tapGesture.location(in: sceneView)
+        
+        // Вектор к поверхности, если он пересекает какую-то поверхность, то попадает в результирующее значение
+        guard let hitTestResult = sceneView.hitTest(tapLocation, types: .existingPlaneUsingExtent).first else {
+            return
+        }
+        
+        createMadBox(hitTestResult: hitTestResult)
+    }
+    
+    private func createMadBox(hitTestResult: ARHitTestResult) {
+        let position = SCNVector3(
+            hitTestResult.worldTransform.columns.3.x,
+            hitTestResult.worldTransform.columns.3.y + 0.05,
+            hitTestResult.worldTransform.columns.3.z
+        )
+        
+        let box = getCubeNode(
+            size: 0.2,
+            position: position,
+            texture: UIImage(named: "mad_texture.png")
+        )
+        
+        sceneView.scene.rootNode.addChildNode(box)
+    }
+    
 }
 
 @available(iOS 11.3, *)
@@ -184,17 +231,18 @@ extension ViewController: ARSCNViewDelegate {
         
         uPlane.update(anchor: anchor as! ARPlaneAnchor)
     }
+    
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
+@available(iOS 11.3, *)
+extension ViewController: ARSessionDelegate {
+    
+    func session(_ session: ARSession, didFailWithError error: Error) {
+        
+    }
+    
+    func session(_ session: ARSession, didUpdate frame: ARFrame) {
+        
+    }
+    
+}
